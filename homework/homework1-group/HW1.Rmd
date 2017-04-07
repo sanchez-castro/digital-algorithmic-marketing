@@ -1,0 +1,173 @@
+---
+title: "Homework 1"
+output: html_notebook
+---
+
+```{r echo=FALSE}
+setwd("/Users/schzcas/Documents/github/digital-algorithmic-marketing/homework/homework1-group")
+library(FNN)
+library(ggplot2)
+```
+
+
+```{r echo=FALSE}
+#customer data 
+load(file="cust2.rdat")
+load(file="target2.rdat")
+```
+
+Checkout colnames in my database of customers
+```{r echo=FALSE}
+#Check colnames
+names(cust2)
+```
+
+Checkout colnames in my database of targets
+```{r echo=FALSE}
+#Check colnames
+names(target2)
+```
+
+LEt's see our target database
+```{r}
+target2
+```
+
+What would be the cost if we tried to target all our customers if we want to target them all?
+```{r echo=FALSE}
+cost = 3.5
+profit_all = sum(target2[,"spend"]) - cost*length(target2[,"spend"])
+profit_all
+```
+
+Let's say that we want to target the people that above the 50% in the economic index
+```{r echo= FALSE}
+eco_target = target2[target2$ecom_index>.5,2:12]
+dim(eco_target)
+```
+
+What would be the profits to target them based on ecom_index?
+```{r}
+profit_all = sum(eco_target[,"spend"]) - cost*length(eco_target[,"spend"])
+profit_all
+```
+
+
+Let's say that we would like to know if an in-house algorithm can work as this accuracy.
+
+Let's prepare our data:
+
+What our threshold?
+If we plot spend distribution
+```{r}
+cust3 = cust2[cust2$spend>0,2:11]
+ggplot(cust3, aes(spend)) + 
+  geom_histogram(binwidth=1, alpha= .8)+
+  ylab("Frequency") + xlab("price") + ggtitle("Spend Distribution") + xlim(0, 400)
+```
+
+We can see that the Median of spend is 29.9
+```{r}
+summary(cust3$spend)
+```
+
+So we would like to match people with this the characteristics of people that spend above the meadian.
+So we are going to prepare these dataframes
+```{r}
+# cut the data base based on he mean $29.94 dollar treshold
+cs=cust2[cust2$spend>29.94,2:10]
+#create the matrix
+seed=model.matrix(~census_region 
+                  +household_size+hoh_oldest_age    
+                  +household_income+children         
+                  +racial_background+connection_speed  
+                  +country_of_origin+retail_index-1, data=cs)
+#cut the data 
+ts = target2[,2:10]
+#create the matrix
+targ=model.matrix(~census_region 
+                  +household_size+hoh_oldest_age    
+                  +household_income+children         
+                  +racial_background+connection_speed  
+                  +country_of_origin+retail_index-1, data=ts)
+
+targ2=targ[,intersect(colnames(seed),colnames(targ))]
+
+```
+
+
+Let's run our first KNNs Algorithm based on the people that spend more than the median.
+```{r}
+profit=rep(0,20)
+for(k in 1:20){
+  mk = get.knnx(targ2,seed,k=k,algorithm='brute')
+  matches=unique(as.vector(mk$nn.index))
+  profit[k] = sum(target2[matches,"spend"])-cost*length(target2[matches,"spend"])
+}
+par(mar = rep(2, 4))
+plot(profit,type='b',pch=19)
+abline(h=2,lty=2)
+```
+
+```{r}
+k.star = which.max(profit); k.star
+
+mk.star = get.knnx(targ2,seed,k=k.star,algorithm='brute')
+matches=unique(as.vector(mk.star$nn.index))
+profit.star = sum(target2[matches,"spend"])-cost*length(target2[matches,"spend"])
+profit.star
+```
+
+This doesn't look quite good.
+Let's see if we can cut the dimensions to have a better approximation
+```{r}
+reg = lm(spend~census_region 
+         +household_size+hoh_oldest_age    
+         +household_income+children         
+         +racial_background+connection_speed  
+         +country_of_origin+retail_index, data=cust2)
+summary(reg)
+```
+
+Values of household_income== 6 and household_sie==6 are at a significance level:
+```{r}
+seed = with(cs,cbind(retail_index,household_income==6,household_size==6))
+targ2 = with(target2,cbind(retail_index,household_income==6,household_size==6))
+# Storage
+profit2=rep(0,20)
+# Loop
+for(k in 1:20){
+  mk = get.knnx(targ2,seed,k=k,algorithm='brute')
+  matches=unique(as.vector(mk$nn.index))
+  profit2[k] = sum(target2[matches,"spend"])-cost*length(target2[matches,"spend"])
+}
+```
+
+```{r}
+# Plot
+plot(profit2,type='b',pch=19)
+abline(h=2,lty=2)
+```
+
+
+```{r}
+# Max profits
+#If our costs are .5
+cost=.5
+k.star = which.max(profit2); k.star
+mk.star = get.knnx(targ2,seed,k=k.star,algorithm='brute')
+matches=unique(as.vector(mk.star$nn.index))
+profit2.star = sum(target2[matches,"spend"])-cost*length(target2[matches,"spend"])
+profit2.star
+# Explore matches
+# How many did we really match?
+table(target2[matches,"spend"]>0)
+
+# What percentage did we capture?
+perc.captured = sum(target2[matches,"spend"])/sum(target2[,"spend"])
+perc.captured
+```
+
+It looks like at a cluster level of 4, we achieve the best profits with our data.
+We could achieve less people with the sa
+```
