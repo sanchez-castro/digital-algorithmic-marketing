@@ -24,10 +24,15 @@ kmeans.ani(x=dat[,1:2],centers=4,hints = c("Move centers!", "Find cluster?"), pc
 
 # Production version of k-means is included in R!
 # K Means Clustering
+#[,1:3] are columns 
+#nstart (itereates over different positions and gives you the "best"
 out = kmeans(dat[,1:3],centers=4,nstart=20)
 plot(dat[,1:2],col=out$cluster,pch=19,xlab="X",ylab="Y")
 points(out$centers,col="white",pch=20,cex=2)
 points(out$centers,col=1:K,pch=19,cex=1)
+
+#let's se what is out?
+str(out)
 
 
 # Construct measures
@@ -38,8 +43,14 @@ head(fitted.X)
 
 # Deviations from the center
 resid.X = X - fitted.X
+resid.X
 
 # Summary Stats
+#inside the objetc out
+
+#betweenss is between clusters
+#withinss inside a cluster
+#we want big betweenss and small withinss
 res.table = cbind(out[c("betweenss", "tot.withinss", "totss")])
 rownames(res.table) = c("between.ss", "tot.withinss", "totss")
 colnames(res.table)="Estimate"
@@ -51,14 +62,15 @@ out$withinss
 # Remember the whole idea is to minimize within cluster variation
 # and maximize between cluster variation!
 
+
 # How many clusters?
 # One way is to use the Elbow plot
-mydata <- dat[,1:2]
+mydata <- dat[,1:3]
 wss <- (nrow(mydata)-1)*sum(apply(mydata,2,var))
 for (i in 2:15) wss[i] <- sum(kmeans(mydata,centers=i,nstart=4)$withinss)
 plot(1:15, wss, type="b", xlab="Number of Clusters",
      ylab="Within groups sum of squares")
 
 
-
+#how do you decide segments? when you arrive to the segments that is most profitable
 
