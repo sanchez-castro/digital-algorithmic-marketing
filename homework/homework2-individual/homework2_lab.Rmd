@@ -1,0 +1,98 @@
+---
+title: "Homework 2"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+# Recommendation Systems
+
+Let's see our data. 
+We have two datasets, the first is a 1,664 movies and all the general information about these movies. 
+```{r, echo = FALSE }
+library(recommenderlab)
+data(MovieLense)  # Not sure why there is an e at the end
+MovieLenseMeta
+```
+
+The second data set is a matrix of 943 people that have reated these 1,664 movies.  
+```{r}
+dim(MovieLense)
+```
+
+Not all the people rated all the movies. So, as we can see in the following image, rows are users that might or not rate a particular movie (columns). The "scale-color" is the rating per movie.
+```{r}
+image(MovieLense, main = "Raw ratings")
+```
+
+
+Train Recommendation System
+```{r}
+train <- MovieLense[1:900]
+dim(train) # Using 900 Raters
+```
+
+This is a target user, which we would like to recommend. He has a recommended 124 movies. 
+```{r}
+u <- MovieLense[901] # Score the next one
+u
+```
+
+Checking out the recommendation methods in this package
+```{r, echo= FALSE, eval=FALSE}
+# A recommender is created using the creator function Recommender(). 
+# Available recommendation methods are stored in a registry.
+recommenderRegistry$get_entries(dataType = "realRatingMatrix")
+```
+
+Running a User Based Collaborative Filtering
+```{r}
+r <- Recommender(train, method = "UBCF")
+r  # object of type "Recommender"
+names(getModel(r))
+```
+
+
+Prediction
+```{r}
+recom <- predict(r, u, n = 5)
+as(recom, "list")
+```
+
+## Evaluation
+```{r}
+
+scheme <- evaluationScheme(train, 
+                           method = "cross", 
+                           k = 2,
+                           given = 10, 
+                           goodRating=3)
+
+algorithms <- list(`random items` = list(name = "RANDOM", param = NULL),
+                   `popular items` = list(name = "POPULAR", param = NULL),
+                   `user-based CF` = list(name = "UBCF",
+                                          param = list(method = "Cosine", nn = 50)),
+                   `item-based CF` = list(name = "IBCF",
+                                          param = list(method = "Cosine", k = 50)))
+
+results <- evaluate(scheme, algorithms,
+                    n = c(1, 5, 10, 15, 50,200,1000))
+
+plot(results, annotate = c(1, 3), legend = "right")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
