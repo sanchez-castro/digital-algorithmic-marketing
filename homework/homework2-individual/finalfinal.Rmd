@@ -1,23 +1,20 @@
 ---
-title: "R Notebook"
+title: "Digital and Algorithmic Marketing: Homework 2 "
 output:
   html_notebook: default
   html_document: default
   pdf_document: default
 ---
 
-# Digital and Algorithmic Marketing
 # Recommendation Systems
 ### Jorge Adrian Sánchez
 
 ```{r, echo = FALSE}
 library(recommenderlab)
-data(MovieLense)  # Not sure why there is an e at the end
+data(MovieLense)
 ```
 
-With the 'reccomendarlab' package from R, we have two datasets: the first cointains 1,664 movies and all the general information about these movies, the second, is a matrix of 943 people that have reated this 1,664 movies.
-
-Not all the people rated all the movies. So, as we can see in the following image, rows are users that might or not rate a particular movie (columns). The "scale-color" is the rating per movie.
+With the 'reccomendarlab' package from R, we have two datasets: the first, cointains 1,664 movies and all the general information about these movies; the second, is a matrix of 943 people that have reated this 1,664 movies. Note that not all the people rated all the movies. So, as we can see in the following image, rows are users that might or not rate a particular movie (columns) in blank(or white). The "scale-color" is the rating per movie.
 
 ```{r, echo=FALSE}
 image(MovieLense, main = "Raw ratings")
@@ -32,7 +29,7 @@ ____________
 In this case 80% of 900 represents 720 users which will be our train dataset and our test dataset (holdout) will be represented by 180 users.
 ```{r}
 ## create 80/20 split (known/unknown) for the first 900 users in dataset
-e <- evaluationScheme(MovieLense[1:900], method="split", train=0.8,k=1, given=15)
+e <- evaluationScheme(MovieLense[1:900], method="split", train=0.8,k=1, given=15, goodRating=4)
 e
 ```
 _____________
@@ -40,27 +37,13 @@ _____________
 
 We can evaluate the methods by taking the time it takes to train the recommendation with the system.time() function form R
 
-As we can see in the table, the User Based Collaborative Filtering takes less than .01 percent of the time consumed by the Item Based Collaborative Filtering.
+As we can see in the table, the User Based Collaborative Filtering takes less than .01 percent of the time consumed by the Item Based Collaborative Filtering. This is because ITEM-Based algorithm has to look for the entire set of movie ratings that could be a lot more than comparing the number of users.
 ```{r}
 ## create a user-based CF recommender using training data
 system.time(r_ubcf <- Recommender(getData(e, "train"), "UBCF"))
 system.time(r_ibcf <- Recommender(getData(e, "train"), "IBCF"))
 ```
 
-Also, we can use the ``` evaluate ``` function in which we can obtain the ROC curve to see how well which model is more accurate. In this case
-```{r}
-#meta-parameters of the models
-algorithms <- list(`user-based CF` = list(name = "UBCF", param = list(method = "Cosine", nn = 50)),
-                   `item-based CF` = list(name = "IBCF", param = list(method = "Cosine", k = 50)))
-scheme <- evaluationScheme(MovieLense[1:900], method = "split", train = .8, k = 1, given = 10, goodRating = 4)
-#n= number of recommendations
-evaluation_results <- evaluate(scheme, algorithms, n=c(3,5,10,20))
-evaluation_results
-```
-```{r, echo=FALSE}
-plot(evaluation_results, annotate = c(1, 3), legend="bottomright")
-title(main="ROC curve")
-```
 ___________
 #### c) Predict the entire unknown ratings for the users in the holdout data using the fitted UBCF and IBCF models. Compare the predictive accuracy and the time it takes to make the predictions.
 
@@ -71,6 +54,7 @@ We can see the first 20 users and their first 100 ratings
 ```{r, echo = FALSE}
 ## create predictions for the test data using known ratings (see given above)
 system.time(prediction_ubcf <- predict(r_ubcf, getData(e, "known"), type="ratings"))
+prediction_ubcf
 ```
 
 ```{r, echo = FALSE}
@@ -82,6 +66,7 @@ The same for the Item Based Collaborative Filtering
 ```{r}
 ## create predictions for the test data using known ratings (see given above)
 system.time(prediction_ibcf <- predict(r_ibcf, getData(e, "known"), type="ratings"))
+prediction_ibcf
 ```
 
 ```{r, echo=FALSE}
@@ -89,46 +74,97 @@ image(prediction_ibcf[1:20,1:100])
 ```
 
 #### d) Compare the predictive accuracy of these predictions. In particular, compare the overlap in the predictions of the two methods.
-```{r}
+We can compare tha ccuracy of predictions by evaluating the algorithms of predicting ratins and the algoritms of top-N reccomendation
+### EVALUATING PREDICTING RATINGS
+
+#### A. Root mean square error (RMSE)
+
+
+#### UBCF
+```{r, echo=FALSE}
 ## compute error metrics averaged per user and then averaged over all recommendations
 calcPredictionAccuracy(prediction_ubcf, getData(e, "unknown"))
 ```
 
-
-```{r}
+#### IBCF
+```{r, echo=FALSE}
 calcPredictionAccuracy(prediction_ibcf, getData(e, "unknown"))
 ```
 
-For checking the overlap, I used a Out-Sample without crossvalidation and a Top-N list prediction model for the Top-50 movie recomendation.
+In this comparison, we could see that the **root mean square error (RMSE)** is less in the **User Based Collaborative Filtering** than in the Item Based Collaborative Filtering. 
+
+
+
+### EVALUATING top-N recommendations
+
+Also, we can use the ``` evaluate ``` function in which we can obtain the ROC curve to see how well which model is more accurate when predicting a top-N list. In this case we have:
+
+```{r}
+#meta-parameters of the models
+algorithms <- list(`user-based CF` = list(name = "UBCF", param = list(method = "Cosine", nn = 50)),
+                   `item-based CF` = list(name = "IBCF", param = list(method = "Cosine", k = 50)))
+
+scheme <- evaluationScheme(MovieLense[1:900], method = "split", train = .8, k = 1, given = 10, goodRating = 4)
+
+#n= number of recommendations
+evaluation_results <- evaluate(scheme, algorithms,type = "topNList", n=c(3,5,10,20))
+evaluation_results
+```
+
+```{r, echo=FALSE}
+plot(evaluation_results, annotate = c(1, 3), legend="bottomright")
+title(main="ROC curve")
+```
+We can see that the recommendation time it takes to fit the UBCF and IBCF models is similar compare to the ratings. UBCF time < IBCF time.
+
+#### B. Confusion Matrix
+
+The confusion matrix of our evaluation results for 'UBCF':
+```{r, echo=FALSE}
+evaluation_results[[1]]
+getConfusionMatrix(evaluation_results[[1]])[[1]]
+```
+
+The confusion matrix of our evaluation results for 'IBCF':
+```{r,  echo=FALSE}
+evaluation_results[[2]]
+getConfusionMatrix(evaluation_results[[2]])[[1]]
+```
+
+
+### C. Comparing Overlap of top-N recommender algorithms
+For checking the overlap, I used a Out-Sample without crossvalidation and a Top-N list prediction model for the Top-100 movie recomendation.
+
 ```{r}
 train <- MovieLense[1:900]
-test <- MovieLense[901:943]
+test <- MovieLense[900:943]
 
 # Training the recommender
 r1 <- Recommender(train, method = "UBCF") 
 r2 <- Recommender(train, method = "IBCF") 
 
 # Predict for the test data
-rec1 = predict(r1,test,n=50)
-rec2 = predict(r2,test,n=50)
+rec1 = predict(r1,test,n=100)
+rec2 = predict(r2,test,n=100)
 ```
 
-
+So depending on the number of your top-N reccomendation range, in this case we want to give a Top-List of 100, we would like to know how our first model and second model overlaps for each user top-N reccomendation
 ```{r}
-rec.overlap = function(recA,recB,i)
-{
-  length(intersect(recA@items[[i]],recB@items[[i]]))
-}
-```
-
-So depending on the number of your "range" in this case the Top-List is 50 we have find that our first model and second model agrees for each user in the with the following number of movies:
-```{r}
+overlap = c()
 for (x in 1:43){
-  print(rec.overlap(rec1,rec2,i=x))
+  c<- rec.overlap(rec1,rec2,i=x)
+  overlap = c(overlap, c)
 }
 ```
+WE can see that generally, our two algorithms agrees on around 19 movies in general per reccomendation:
+```{r}
+summary(overlap)
+```
+
+**We can combine both algorithms and have a general recommendation for a specific user based on this information.**
+
 
 #### Q2: Imagine that you could append movie characteristics (Budget, Genre, Studio, Actors, Director etc.) to this data. How would you use this  to construct a recommendation system? Outline any specifics you can about this new system.
 
-We can use this data as features to measure the simmilarity between the movies. In this case we just have simillarity based on ratings, but we can add more features to compute our distance metric based on more dimensions. IN this case, budget, genre, studio, actors, director etc. could have an impact to rate movies based on its similarities in all the dimensions and not just the rating. 
+We can use this data as features to measure the simmilarity between the movies. In this case we just have simillarity based on ratings, but we can add more features to compute our distance metric based on more dimensions. In this case, budget, genre, studio, actors, director etc. could have an impact to rate movies based on its similarities in all the dimensions and not just the rating.
 
