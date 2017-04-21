@@ -1,0 +1,191 @@
+---
+title: "Homework 3"
+output:
+  html_notebook: default
+  pdf_document: default
+---
+```{r, echo=FALSE, eval=FALSE}
+# Digital and Algorithmic Marketing
+# Homework #3 (Group)
+# Instructor: Sanjog Misra
+# Topic: Matching Models
+
+# I have cleand and simplified the dating data we saw in class.
+# The dataset called df has variables
+# SenderLooks (1-11): A categorical variable reflecting 
+#       the percentile group rated by UC undergrads. 
+#       1 is low and 11 is high
+# ReceiverLooks (same type as SenderLooks)
+# SenderGender (1=Female, 2 = Male)
+# ReciverGender (as above)
+# y (0/1 :  reflecting if a message was sent)
+
+
+# Load the data
+load("HW4df.rdat")
+summary(df)
+
+# Some Simple plots
+# Distribution of Women Senders
+barplot(table(df[df$SenderGender==1,]$SenderLooks))
+# Distribution of Men Senders
+barplot(table(df[df$SenderGender==2,]$SenderLooks))
+
+
+# Logit Models
+# For Men and Women I run separate Logit models to capture the 
+# impact looks of the receiver have on the probability of sending a message
+lres.m = glm(y~ReceiverLooks,data=df[df$SenderGender==2,],family='binomial')
+lres.f = glm(y~ReceiverLooks,data=df[df$SenderGender==1,],family='binomial')
+
+# Peek at results...
+summary(lres.m)
+
+# One can use these results to predict the probability 
+# that a man will send a message to a woman with 
+# looks = Xfemale
+pred.prob.male=function(Xfemale){
+  predict(lres.m,newdata=data.frame(ReceiverLooks=factor(Xfemale,levels=1:11)),type='response')
+}
+# And similarly for women
+pred.prob.female=function(Xmale){
+  predict(lres.f,newdata=data.frame(ReceiverLooks=factor(Xmale,levels=1:11)),type='response')
+}
+
+# For example
+pred.prob.male(5)
+pred.prob.female(5)
+
+pred.prob.male(11)
+pred.prob.female(11)
+
+# We can plot the probabilities for Male Senders
+plot(x=1:11,y=pred.prob.male(1:11),type='b',pch=19,col="steelblue",xlab="Receiver Looks",ylab="Predicted Probability")
+# and over Women Senders
+lines(x=1:11,y=pred.prob.female(1:11),type='b',pch=19,col='darkred')
+
+
+# using these functions I can create a match score
+# that simply multiplies the two predictions and takes a square root
+pred.match = function(Xmale,Xfemale)
+{
+  as.numeric(sqrt(pred.prob.female(Xmale)*pred.prob.male(Xfemale)))
+}
+
+# So a Man and Woman of with looks =1,1
+# have a match score of
+pred.match(1,1)
+# 0.04904689 
+# While Man and Woman of with looks= 11,11
+# have a score of...
+pred.match(11,11)
+#  0.1234561
+```
+
+### Q1: What can you say about the preferences of sender men and women related to the looks of the receiver? Are there differences across the genders?
+
+The probability that a man sends a message based on the look of the other person is more than        women. This means that the look of the people you want to contact is more important for men. 
+  
+### Q2: Does the utility/preference function change depending on the looks of the Sender? Are there differences in how these changes for men and women?
+As the following graph shows intersting conclusions for the utility function dependending of the Looks of the sender:
+In the first row, the graph shows the probabilities of man and women where their looks are "less than average" (<6) and the probability to send a message for depending on the looks of their reciever.
+
+The probability of a man that its look is less than average will diminish if the reciever is very good looking (>8)
+The probability of a women that its look is less than average will increase if the reciever is not so good looking (they have more confidence), but will decrease if the reciever is very good looking. 
+
+In the second row, the graph shows the probabilities of man and women where their looks are "above than average" (>6) and the probability to send a message for depending on the looks of their reciever.
+
+The probability of a man that its look is more than average is very similar to average but he can get more confident if the reciever is very good looking (>10)
+The probability of a women that its look is more than average will decrease if the reciever is not so good looking and will increase if the reciever is very good looking. 
+
+
+
+```{r, echo=FALSE}
+#     Here is some code to help:
+#     This code estimates preferences for Sender Males with Looks rated less than 6
+      lres.m5 = glm(y~ReceiverLooks, data=df[df$SenderGender==2 & as.numeric(df$SenderLooks)<6,],family='binomial')
+      lres.f5 = glm(y~ReceiverLooks, data=df[df$SenderGender==1 & as.numeric(df$SenderLooks)<6,],family='binomial')
+      
+      lres.m6 = glm(y~ReceiverLooks, data=df[df$SenderGender==2 & as.numeric(df$SenderLooks)>6,],family='binomial')
+      lres.f6 = glm(y~ReceiverLooks, data=df[df$SenderGender==1 & as.numeric(df$SenderLooks)>6,],family='binomial')
+      
+      
+#     We can then create a prediction function
+      pred.prob.m5=function(Xfemale){
+      predict(lres.m5,newdata=data.frame(ReceiverLooks=factor(Xfemale,levels=1:11)),type='response')
+}
+
+      pred.prob.f5=function(Xmale){
+      predict(lres.f5,newdata=data.frame(ReceiverLooks=factor(Xmale,levels=1:11)),type='response')
+}
+      pred.prob.m6=function(Xfemale){
+      predict(lres.m6,newdata=data.frame(ReceiverLooks=factor(Xfemale,levels=1:11)),type='response')
+}
+
+      pred.prob.f6=function(Xmale){
+      predict(lres.f6,newdata=data.frame(ReceiverLooks=factor(Xmale,levels=1:11)),type='response')
+}
+
+      
+      
+      par(mfrow=c(2,2))
+#     And compare to the full sample
+#     All Sender=Male 
+      plot(x=1:11,y=pred.prob.male(1:11),type='b',pch=19,col="steelblue",xlab="Receiver Looks",ylab="Predicted Probability")
+#     for Looks < 6 
+      lines(x=1:11,y=pred.prob.m5(1:11),type='b',pch=19,col='blue',lty=2)
+      legend("topleft", bty="n", lwd=1, col=c("steelblue","blue"), legend=c("All types of look","Looks < 6"))
+      title(main = "MAN")
+#     All Sender=Female
+      plot(x=1:11,y=pred.prob.female(1:11),type='b',pch=19,col="steelblue",xlab="Receiver Looks",ylab="Predicted Probability")
+#     for Looks < 6 
+      lines(x=1:11,y=pred.prob.f5(1:11),type='b',pch=19,col='blue',lty=2)
+            legend("topleft", bty="n", lwd=1, col=c("steelblue","blue"), legend=c("All types of look","Looks < 6"))
+      title(main = "WOMEN")
+
+            
+#####             
+      plot(x=1:11,y=pred.prob.male(1:11),type='b',pch=19,col="steelblue",xlab="Receiver Looks",ylab="Predicted Probability")
+#     for Looks < 6 
+      lines(x=1:11,y=pred.prob.m6(1:11),type='b',pch=19,col='blue',lty=2)
+      legend("topleft", bty="n", lwd=1, col=c("steelblue","blue"), legend=c("All types of look","Looks > 6"))
+      title(main = "MAN")
+#     All Sender=Female
+      plot(x=1:11,y=pred.prob.female(1:11),type='b',pch=19,col="steelblue",xlab="Receiver Looks",ylab="Predicted Probability")
+#     for Looks < 6 
+      lines(x=1:11,y=pred.prob.f6(1:11),type='b',pch=19,col='blue',lty=2)
+            legend("topleft", bty="n", lwd=1, col=c("steelblue","blue"), legend=c("All types of look","Looks > 6"))
+      title(main = "WOMEN")
+#     You can use these ideas to explore various levels of sender looks.
+#     Of course you can do this for women senders as well...
+```
+
+
+
+### Q3: Using the pred.match function explore the match scores between men and women at various looks percentiles. Comment on and explain your findings. For example, you may want to explore why pred.match(2,10) differs from pred.match(10,2).
+
+
+In the following plot we can see how the match propensity by the different looks of men and women. 
+As you can see, matching score arises when looks are higher. 
+
+```{r, echo=FALSE, fig.width = 4, fig.height = 4}
+mymat <- matrix(nrow=11, ncol=11)
+
+for(i in 1:dim(mymat)[1]) {
+  for(j in 1:dim(mymat)[2]) {
+    mymat[i,j] = pred.match(i,j)
+  }
+}
+
+require(plot3D)
+persp3D(x=1:11, y=1:11, z = mymat, theta = 60,  phi=25, zlab = "Match Score", ticktype="detailed", xlab="Man Looks", ylab="Women Looks")
+```
+
+
+    
+# Q4: (Optional: Warning Difficult and Time Consuming!) 
+#     How would you change the match function to account 
+#     for the findings in Q2. How do the results compare to
+#     the original pred.match function results.
+
+
