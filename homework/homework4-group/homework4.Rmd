@@ -1,0 +1,78 @@
+---
+title: "Homework 4"
+output: html_notebook
+---
+
+##J. Adrián Sánchez-Castro
+
+
+### Q1: Assuming that all relevant variables were tested how many possible message combinations are there? 
+In a complete experiment we will need to try 512 different combinations. 
+```{r, echo=FALSE}
+
+V1=c("Thank you! Enjoy MORE Everything ",
+"Welcome to MORE Everything ",
+"MORE Everything has been activated ",
+"MORE Everything is designed for you ")
+
+V2=c("YOU’LL LOVE IT! ", "CONGRATS!", "YOU'RE IN!", "FINALLY!")
+
+V3=c("Make the most of your new plan’s savings & shareable data - add a new device today! ", "Check out our selection for you — add a new phone, tablet, or other device! ")
+
+V4=c("Symbol After text ", "Symbol Before text ")
+
+V5=c("Take A look ", "Have a Look ","View More ", "See for Yourself")
+
+V6=c("▶", ">>")
+
+Vs = list(V1,V2,V3,V4,V5,V6)
+Vs
+
+levs=sapply(Vs,length)
+levs
+
+print(levs)
+4*4*2*2*4*2
+```
+
+### Q2: Estimate two logit models based on the data (assuming a simple linear specification) - one for opens and another for clicks. Discuss your results based on the nature of the variables (see variable names and descriptions tab). 
+
+```{r}
+##opened
+library(readxl)
+persado_experiment <- read_excel("~/Documents/github/digital-algorithmic-marketing/homework/homework4-group/persado_experiment.xlsx", na = "NA")
+```
+
+```{r}
+## Let's have our data frame of features
+ds1 <- persado_experiment[1:16,8:14]
+ds1
+Xm = model.matrix(~.,ds1)
+Xm
+```
+
+```{r}
+## Matrix of success over fails 
+## The response can be a matrix where the first column is the number of "successes" and the second column is the number of "failures". In this case R adds the two columns together to produce the correct binomial denominator
+
+ytab = cbind(persado_experiment['unique_opened'][1:16,],(persado_experiment['unique_sent'][1:16,]-persado_experiment['unique_opened'][1:16,]))
+y <- data.matrix(ytab)
+```
+
+```{r}
+##Fit thre regression
+sm.ds1 = glm(y~Xm-1,family='binomial') # No intercept
+summary(sm.ds1)
+```
+
+```{r}
+# Now we can score
+newdat = data.frame(Xm=I(model.matrix(~.,data=ds1)))
+score = predict(sm.ds1,newdata=newdat)
+
+## Find max score
+idx = which.max(score)
+idx
+```
+
+### Q3: Use the estimated models to compute predicted probabilities for all possible message combinations (separate predictions for opens and clicks). Which messages have the highest fitted response probabilities (for opens and clicks each)? Are the two messages similar or different? Discuss.
