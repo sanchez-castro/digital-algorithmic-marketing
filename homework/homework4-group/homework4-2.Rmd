@@ -1,0 +1,139 @@
+---
+title: "Homework 4"
+output: html_notebook
+---
+
+##J. Adrián Sánchez-Castro
+
+
+### Q1: Assuming that all relevant variables were tested how many possible message combinations are there? 
+In a complete experiment we will need to try 512 different combinations. 
+```{r, echo=FALSE}
+
+V1=c("Thank you! Enjoy MORE Everything ",
+"Welcome to MORE Everything ",
+"MORE Everything has been activated ",
+"MORE Everything is designed for you ")
+
+V2=c("YOU’LL LOVE IT! ", "CONGRATS!", "YOU'RE IN!", "FINALLY!")
+
+V3=c("Make the most of your new plan’s savings & shareable data - add a new device today! ", "Check out our selection for you — add a new phone, tablet, or other device! ")
+
+V4=c("Symbol After text ", "Symbol Before text ")
+
+V5=c("Take A look ", "Have a Look ","View More ", "See for Yourself")
+
+V6=c("▶", ">>")
+
+Vs = list(V1,V2,V3,V4,V5,V6)
+Vs
+
+levs=sapply(Vs,length)
+levs
+
+print(levs)
+4*4*2*2*4*2
+```
+
+### Q2: Estimate two logit models based on the data (assuming a simple linear specification) - one for opens and another for clicks. Discuss your results based on the nature of the variables (see variable names and descriptions tab). 
+
+Our data matrix represents the selected combinations of levels representing seven different sections of the headline intro/headline/main_text/button/action/purpose/symbol that was shown in the previous code chunk.
+
+```{r , echo=FALSE}
+##opened
+library(readxl)
+persado_experiment <- read_excel("~/Documents/github/digital-algorithmic-marketing/homework/homework4-group/persado_experiment.xlsx", na = "NA")
+
+## Let's have our data frame of features
+
+ds1 <- persado_experiment[1:16,8:14]
+ds1
+
+ds1$intro = as.factor(ds1$intro)
+ds1$headiline = as.factor(ds1$headline)
+ds1$main_text = as.factor(ds1$main_text)
+ds1$button = as.factor(ds1$button)
+ds1$action = as.factor(ds1$action)
+ds1$purpose = as.factor(ds1$purpose)
+ds1$symbol = as.factor(ds1$symbol)
+
+Xm = model.matrix(~.,ds1)
+```
+
+```{r, echo=FALSE, eval=FALSE}
+## For binomial linear regression Y is a matrix of success over fails## 
+## The response can be a matrix where the first column is the number of "successes" and the second column is the number of "failures". In this case R adds the two columns together to produce the correct binomial denominator
+```
+
+We are would like to run two logistic regression models to understand the success of opening and e-mail and the action of clicking. 
+
+Our first model that represents our succesful outcome to open an e-mail have 4 significant factors (alpha=.001) as shown bellow:
+```{r}
+#open model
+y_open = cbind(persado_experiment['unique_opened'][1:16,],(persado_experiment['unique_sent'][1:16,]-persado_experiment['unique_opened'][1:16,]))
+y_o <- data.matrix(y_open)
+
+##Fit thre regression
+sm.ds1 = glm(y_o~Xm-1,family='binomial') # No intercept
+
+data.frame(summary(sm.ds1)$coef[summary(sm.ds1)$coef[,4] <= .001, 4])
+```
+
+For our second model that represents our succesful outcome to click have signficicant factors (alpha=.001) as shown bellow:
+```{r}
+#clicks model
+y_clicks = cbind(persado_experiment['unique_clicks'][1:16,],(persado_experiment['unique_sent'][1:16,]-persado_experiment['unique_clicks'][1:16,]))
+y_c <- data.matrix(y_clicks)
+
+
+##Fit thre regression
+sm.ds2 = glm(y_c~Xm-1,family='binomial') # No intercept
+data.frame(summary(sm.ds2)$coef[summary(sm.ds2)$coef[,4] <= .001, 4])
+```
+
+AS we can see, the weights change in the two models. This means that for different outcomes (open-click), levels and factors change.
+
+### Q3: Use the estimated models to compute predicted probabilities for all possible message combinations (separate predictions for opens and clicks). Which messages have the highest fitted response probabilities (for opens and clicks each)? Are the two messages similar or different? Discuss.
+
+As we can see for the model that fits a succesful outcome of opening an e-mail is the 12th headline: 
+
+```{r}
+###############################
+#         Opened              #
+###############################
+
+# Now we can score
+newdat = data.frame(Xm=I(model.matrix(~.,data=ds1)))
+score = predict(sm.ds1,newdata=newdat)
+
+## Find max score
+idx_open = which.max(score)
+print(idx_open)
+```
+```{r, echo=FALSE}
+print("MORE Everything has been activated *FINALLY! *Make the most of your new plan’s savings & shareable data - add a new device today! * Have A Look '>> *Show Me More")
+```
+
+
+As we can see for the model that fits a succesful outcome of clicking  is the 11th headline:
+```{r}
+###############################
+#         Clicks              #
+###############################
+
+# Now we can score
+newdat = data.frame(Xm=I(model.matrix(~.,data=ds1)))
+score = predict(sm.ds2,newdata=newdat)
+
+## Find max score
+idx_clicks = which.max(score)
+print(idx_clicks)
+```
+
+```{r, echo=FALSE}
+print ("MORE Everything has been activated *YOU'RE IN! *Check out our selection for you — add a new phone, tablet, or other device! *Click Here to View More ▶ *Show Me More")
+```
+
+
+If we compare the headlines, we can see that the headline of the outcome clicking is actually the one that invites you to **Click**. This concludes that having this word impact in the actual clicking of customers. 
+
