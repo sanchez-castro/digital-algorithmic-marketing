@@ -136,4 +136,3 @@ print ("MORE Everything has been activated *YOU'RE IN! *Check out our selection 
 
 
 If we compare the headlines, we can see that the headline of the outcome clicking is actually the one that invites you to **Click**. This concludes that having this word impact in the actual clicking of customers. 
-
