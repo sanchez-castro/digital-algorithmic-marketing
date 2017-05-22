@@ -57,7 +57,9 @@ df$date_account_created <- as.Date(df$date_account_created, format = "%Y-%m-%d")
 df$date_first_booking <- as.Date(df$date_first_booking, format = "%Y-%m-%d")
 ```
 
-Let's see how has been the evolution of the creation of Airbnb accounts, we will see that is a popular service that gas gaining sustained subscription over time
+### Airbnb subscriptions over time
+
+Let's see how has been the evolution of the creation of Airbnb accounts, we will see that is a popular service that has sustained an increase in the number of subscriptions over time.
 ```{r, echo=FALSE}
 
 ggplot(df, aes(df$date_account_created)) + 
@@ -65,8 +67,9 @@ ggplot(df, aes(df$date_account_created)) +
   ylab("Frequency") + xlab("date") + ggtitle("AirBnB account creation")
 ```
 
-### How the channels for signing in are distributed?
-Is people from a particular signup method more prone to book?
+### Signup Channels
+
+We can see the segmentation of subcriptors based on the method trhough which they sign up in Airbnb: basic, facebook, google:
 ```{r, echo=FALSE}
 ggplot(df, aes(df$date_account_created)) + 
   geom_histogram(binwidth=.5,alpha= .8) +
@@ -74,7 +77,27 @@ ggplot(df, aes(df$date_account_created)) +
   geom_bar(aes(fill = signup_method))
 ```
 
-We want to see if older subscritors tend to book in shorter time? 
+We are interested to know if people from a particular signup channel has a relation with bookings. 
+For this, we run a Logistict regression to see the change in odds of this signup methods in booking. 
+```{r, echo=FALSE}
+df$y <- factor(ifelse(is.na(df$date_first_booking), 1, 0))
+```
+
+```{r, echo=FALSE}
+fit <- glm(y~df$signup_method, data=df, family=binomial) 
+```
+
+Although, there is less than .2% which sign up in AirBnb through Google, those users, increase the odds to book in Airbnb more than 3 times. We can have a special attention to those users and try to look for causal variables that can explain counfanding factors. 
+```{r, echo=FALSE, eval=FALSE}
+sum(df$signup_method=="google")/length(df$signup_method)*100
+```
+
+```{r, echo=FALSE}
+exp(coef(fit))
+```
+
+### Subscribers behavior to book
+We want to see if older subscribers tend to book in shorter time? 
 Does the maturity of the digital platform give newer subscriptors more trust?
 
 
@@ -88,7 +111,7 @@ df$qrt_created <-factor(format(df$qrt_created, format = "%y/0%q"))
 ```
 
 ```{r, fig.height=2, fig.width=7, echo=FALSE}
-
+### CHECKOUT NEGATIVE VALUES
 
 plot1<-ggplot(df, aes(x=df$year, y=df$date_diff)) + 
   stat_summary_bin(fun.y="mean", geom="bar", colour = "deeppink3", fill="deeppink3", alpha= .8) + 
