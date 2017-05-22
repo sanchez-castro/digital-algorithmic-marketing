@@ -1,0 +1,130 @@
+---
+title: "Airbnb New User Bookings"
+output: html_notebook
+---
+## Where Will a New Guest Book Their First Travel Experience? 
+## A Kaggle Challenge
+
+We are given a list of users along with their demographics, web session records, and some summary statistics. We would like to create different algorithms to gain insights to predict which country a new user's first booking destination will be. 
+
+There are 12 possible outcomes of the destination country: 'US', 'FR', 'CA', 'GB', 'ES', 'IT', 'PT', 'NL','DE', 'AU', 'NDF' (no destination found), and 'other'.All the users in this dataset are from the USA.
+
+The training and test sets are split by dates. In the test set, we will predict all the new users with first activities after 7/1/2014 (note: this is updated on 12/5/15 when the competition restarted). In the sessions dataset, the data only dates back to 1/1/2014, while the users dataset dates back to 2010. 
+
+```{r, echo=FALSE}
+library(data.table)
+library(gridExtra)
+library(parallel)
+library(zoo)
+library(ggplot2)
+options(warn=-1)
+```
+
+```{r, echo=FALSE}
+cat("Loading data...\n\n")
+df <- fread("../airbnb/train_users_2.csv")
+cat("Dataframe dimensions:\n")
+dim(df)
+```
+
+```{r, echo=FALSE, eval=FALSE}
+#1/100th of the total
+#cat("Sampling dataframe\n")
+#set.seed(1212)
+#samp = sample(1:213451,105677)
+#df = data[samp]
+#cat("DONE\n\n")
+#cat("Dataframe dimensions:\n")
+#dim(df)
+```
+```{r, echo=FALSE, results='hide'}
+gc()
+```
+
+
+```{r, echo=FALSE, eval=FALSE}
+save(df,file="data.Rda")
+```
+
+```{r, echo=FALSE, eval=FALSE}
+load("data.Rda")
+```
+
+## Exploratory Data Analysis
+
+```{r, echo=FALSE}
+df$date_account_created <- as.Date(df$date_account_created, format = "%Y-%m-%d")
+df$date_first_booking <- as.Date(df$date_first_booking, format = "%Y-%m-%d")
+```
+
+Let's see how has been the evolution of the creation of Airbnb accounts, we will see that is a popular service that gas gaining sustained subscription over time
+```{r, echo=FALSE}
+
+ggplot(df, aes(df$date_account_created)) + 
+  geom_histogram(binwidth=.4, fill = "deeppink3", alpha= .8) +
+  ylab("Frequency") + xlab("date") + ggtitle("AirBnB account creation")
+```
+
+### How the channels for signing in are distributed?
+Is people from a particular signup method more prone to book?
+```{r, echo=FALSE}
+ggplot(df, aes(df$date_account_created)) + 
+  geom_histogram(binwidth=.5,alpha= .8) +
+  ylab("Frequency") + xlab("Datetime") + ggtitle("Subscriptors by Signup Method") +
+  geom_bar(aes(fill = signup_method))
+```
+
+We want to see if older subscritors tend to book in shorter time? 
+Does the maturity of the digital platform give newer subscriptors more trust?
+
+
+As we can see in the following plots, subscribers in average tend to book in longer periods
+```{r, echo=FALSE}
+df$date_diff <- df$date_first_booking - df$date_account_created
+df$year_created <- factor(format(df$date_account_created,'%Y'))
+
+df$qrt_created <- as.yearqtr(df$date_account_created, format = "%Y-%m-%d")
+df$qrt_created <-factor(format(df$qrt_created, format = "%y/0%q"))
+```
+
+```{r, fig.height=2, fig.width=7, echo=FALSE}
+
+
+plot1<-ggplot(df, aes(x=df$year, y=df$date_diff)) + 
+  stat_summary_bin(fun.y="mean", geom="bar", colour = "deeppink3", fill="deeppink3", alpha= .8) + 
+  ylab("Averge Days to Book since Subscription") + 
+  xlab("Year") + 
+  ggtitle("Averge Days to Book since Subscription")
+
+plot2<-ggplot(df, aes(x=df$qrt_created, y=df$date_diff)) + 
+  stat_summary_bin(fun.y="mean", geom="bar", colour = "deeppink3", fill="deeppink3", alpha= .8) + 
+  ylab("Averge Days to Book since Subscription") + 
+  xlab("Year/quarter") + 
+  ggtitle("Averge Days to Book since Subscription")
+
+grid.arrange(plot1, plot2, ncol=2)
+```
+
+
+## Seasonality
+```{r, echo=FALSE}
+df$booked_month<- factor(format(df$date_first_booking,'%m'))
+```
+
+```{r, echo=FALSE}
+season<- subset(df, !is.na(df$booked_month))
+ggplot(data=season, aes(x=booked_month, fill = season$country_destination)) + 
+  geom_bar()+
+  coord_flip() +
+  ylab("Frequency") + 
+  xlab("Month") + 
+  ggtitle("Destinations per Month")+
+  scale_fill_discrete(name = "Destinations")
+```
+
+
+```{r, echo=FALSE}
+df$day <- weekdays(df$date_first_booking)
+```
+
+
